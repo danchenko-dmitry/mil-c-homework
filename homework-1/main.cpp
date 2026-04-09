@@ -26,6 +26,7 @@ void print_config(const config& cfg) {
     std::cout << "attackSpeed: " << cfg.attackSpeed << std::endl;
     std::cout << "accelerationPath: " << cfg.accelerationPath << std::endl;
     std::cout << "ammo_name: " << cfg.ammo_name << std::endl;
+}
 
 int main() {
     config cfg;

@@ -1,8 +1,7 @@
 #include <iostream>
 #include <fstream>
-#include <string>
 
-struct config {
+struct target_config {
     float xd, yd, zd;
     float targetX, targetY;
     float attackSpeed;
@@ -10,14 +9,14 @@ struct config {
     char ammo_name[10];
 };
 
-bool read_config(config& cfg) {
+bool read_target_config(target_config& cfg) {
     std::ifstream input("input.txt");
     input >> cfg.xd >> cfg.yd >> cfg.zd >> cfg.targetX >> cfg.targetY >> cfg.attackSpeed >> cfg.accelerationPath >> cfg.ammo_name;
     input.close();
     return true;
 }
 
-void print_config(const config& cfg) {
+void print_target_config(const target_config& cfg) {
     std::cout << "xd: " << cfg.xd << std::endl;
     std::cout << "yd: " << cfg.yd << std::endl;
     std::cout << "zd: " << cfg.zd << std::endl;
@@ -29,11 +28,11 @@ void print_config(const config& cfg) {
 }
 
 int main() {
-    config cfg;
-    read_config(cfg);
+    target_config cfg;
+    read_target_config(cfg);
 
     // print the input
-    print_config(cfg);
+    print_target_config(cfg);
 
     return 0;
 }

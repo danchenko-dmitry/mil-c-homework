@@ -1,2 +1,10 @@
 # Binaries / build artifacts
 homework-1/hw1
+homework-1/hw1-test
+
+# Generated / local outputs
+homework-1/output.txt
+homework-1/*_trajectory.json
+
+__pycache__/
+*.pyc

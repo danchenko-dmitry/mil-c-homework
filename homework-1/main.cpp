@@ -49,17 +49,21 @@ struct target_config {
 
 bool read_target_config(target_config& cfg) {
     std::ifstream input("input.txt");
+    if (!input.is_open()) {
+        std::cout << "read_target_config: failed to open: " << strerror(errno) <<std::endl;
+        return false;
+    }
     input >> cfg.xd >> cfg.yd >> cfg.zd >> cfg.targetX >> cfg.targetY >> cfg.attackSpeed >> cfg.accelerationPath >> cfg.ammo_name;
     input.close();
 
-    std::cout << "read_target_config: xd: " << cfg.xd << std::endl;
-    std::cout << "read_target_config: yd: " << cfg.yd << std::endl;
-    std::cout << "read_target_config: zd: " << cfg.zd << std::endl;
-    std::cout << "read_target_config: targetX: " << cfg.targetX << std::endl;
-    std::cout << "read_target_config: targetY: " << cfg.targetY << std::endl;
-    std::cout << "read_target_config: attackSpeed: " << cfg.attackSpeed << std::endl;
-    std::cout << "read_target_config: accelerationPath: " << cfg.accelerationPath << std::endl;
-    std::cout << "read_target_config: ammo_name: " << cfg.ammo_name << std::endl;
+    std::cout << "input: xd: " << cfg.xd << std::endl;
+    std::cout << "input: yd: " << cfg.yd << std::endl;
+    std::cout << "input: zd: " << cfg.zd << std::endl;
+    std::cout << "input: targetX: " << cfg.targetX << std::endl;
+    std::cout << "input: targetY: " << cfg.targetY << std::endl;
+    std::cout << "input: attackSpeed: " << cfg.attackSpeed << std::endl;
+    std::cout << "input: accelerationPath: " << cfg.accelerationPath << std::endl;
+    std::cout << "input: ammo_name: " << cfg.ammo_name << std::endl;
     return true;
 }
 
@@ -117,14 +121,6 @@ bool detect_ammo_config(const char* name, ammo_config& cfg) {
     return false;
 }
 
-void print_ammo_config(const ammo_config& cfg) {
-    std::cout << "print_ammo_config: name: " << cfg.name << std::endl;
-    std::cout << "print_ammo_config: m: " << cfg.m << std::endl;
-    std::cout << "print_ammo_config: d: " << cfg.d << std::endl;
-    std::cout << "print_ammo_config: l: " << cfg.l << std::endl;
-    std::cout << "print_ammo_config: type: " << cfg.type << std::endl;
-}
-
 double a_koef(double d, double g, double m, double l, double Vo) {
     // a = d·g·m − 2d²·l·V₀
     double d2 = d*d;
@@ -143,9 +139,13 @@ double c_koef(double m, double Za) {
     return 6 * m2 * Za;
 }
 
-double flight_function(double t, double a, double b, double c) {
-    // a*t^3 + b*t^2 + c*t
-    return a * t*t*t + b * t*t + c * t;
+double flight_vertical_function(double t, double a, double b, double c) {
+    // a*t^3 + b*t + c
+    return a * t*t*t + b * t + c;
+}
+
+vector2d flight_horizontal_function(double t,const vector2d& drop_pos,vector2d& direction, double velocity) {
+    return drop_pos + direction * velocity * t;
 }
 
 double calculate_time_of_flight(double p, double b, double a, double phi) {
@@ -252,10 +252,6 @@ bool time_solution(double g, double attackSpeed,double height, const ammo_config
     double b = b_koef(g, ammo_cfg.m, ammo_cfg.d, ammo_cfg.l, attackSpeed);
     double c = c_koef(ammo_cfg.m, height);
 
-    std::cout << "time_solution: a: " << a << std::endl;
-    std::cout << "time_solution: b: " << b << std::endl;
-    std::cout << "time_solution: c: " << c << std::endl;
-
     if (a == 0) {
         // need to solve linear equation
         if (b == 0) {
@@ -273,12 +269,12 @@ bool time_solution(double g, double attackSpeed,double height, const ammo_config
     return true;
 }
 
-vector2d calculate_maneuver_pos(const vector2d& drone_to_target_direction, const vector2d& target_pos, double hdbts, double accelerationPath) {
-    return drone_to_target_direction*(hdbts+accelerationPath)+target_pos;
+vector2d calculate_maneuver_pos(const vector2d& target_to_drone_direction, const vector2d& target_pos, double hdbts, double accelerationPath) {
+    return target_to_drone_direction*(hdbts+accelerationPath)+target_pos;
 }
 
-vector2d calculate_drop_pos(const vector2d& drone_to_target_direction, const vector2d& target_pos, double hdbts) {
-    return drone_to_target_direction*(hdbts)+target_pos;
+vector2d calculate_drop_pos(const vector2d& target_to_drone_direction, const vector2d& target_pos, double hdbts) {
+    return target_to_drone_direction*(hdbts)+target_pos;
 }
 
 bool calculate_drop_parameters(const target_config& cfg, const ammo_config& ammo_cfg, vector2d &drop_pos,vector2d &maneuver_pos,bool &do_we_need_maneuver) {
@@ -304,12 +300,12 @@ bool calculate_drop_parameters(const target_config& cfg, const ammo_config& ammo
         return false;
     }
 
-    vector2d drone_to_target_vector = (drone_pos - target_pos);
-    double D = drone_to_target_vector.length();
-    vector2d drone_to_target_direction = drone_to_target_vector.normalized();
+    vector2d target_to_drone_vector = (drone_pos - target_pos);
+    double D = target_to_drone_vector.length();
+    vector2d target_to_drone_direction = target_to_drone_vector.normalized();
 
-    drop_pos = calculate_drop_pos(drone_to_target_direction, target_pos, hdbts);
-    maneuver_pos = calculate_maneuver_pos(drone_to_target_direction, target_pos, hdbts, cfg.accelerationPath);
+    drop_pos = calculate_drop_pos(target_to_drone_direction, target_pos, hdbts);
+    maneuver_pos = calculate_maneuver_pos(target_to_drone_direction, target_pos, hdbts, cfg.accelerationPath);
 
     if (cfg.accelerationPath+hdbts > D) {
         do_we_need_maneuver = true;
@@ -334,18 +330,29 @@ void write_result(const vector2d& drop_pos,const vector2d& maneuver_pos,bool do_
     output.close();
 }
 
-int main() {
-    target_config cfg;
-    read_target_config(cfg);
-
-    // detect the ammo config
-    ammo_config ammo_cfg;
-    bool success = detect_ammo_config(cfg.ammo_name, ammo_cfg);    
+bool read_configuration(target_config& cfg, ammo_config& ammo_cfg) {
+    bool success = read_target_config(cfg);
+    if (!success) {
+        std::cout << "read_target_config: read config failed" << std::endl;
+        return false;
+    }
+    success = detect_ammo_config(cfg.ammo_name, ammo_cfg);
     if (!success) {
         std::cout << "detect_ammo_config: No appropriate ammo config found" << std::endl;
+        return false;
+    }
+    return true;
+}
+
+#ifndef _LIBRARY_
+
+int main() {
+    target_config cfg;
+    ammo_config ammo_cfg;
+
+    bool success = read_configuration(cfg, ammo_cfg);
+    if (!success) {
         return 1;
-    } else {
-        print_ammo_config(ammo_cfg);    
     }
 
     vector2d drop_pos;
@@ -361,4 +368,6 @@ int main() {
 
     return 0;
 }
+
+#endif // _LIBRARY_
 

@@ -141,7 +141,7 @@ double c_koef(double m, double Za) {
 
 double flight_vertical_function(double t, double a, double b, double c) {
     // a*t^3 + b*t + c
-    return a * t*t*t + b * t + c;
+    return a * t*t*t + b * t*t + c;
 }
 
 vector2d flight_horizontal_function(double t,const vector2d& drop_pos,vector2d& direction, double velocity) {
@@ -316,7 +316,7 @@ bool calculate_drop_parameters(const target_config& cfg, const ammo_config& ammo
 }
 
 void write_vector(const vector2d& vec,std::ofstream &output) {
-    output << vec.x << " " << vec.y << std::endl;
+    output << vec.x << " " << vec.y;
 }
 
 void write_result(const vector2d& drop_pos,const vector2d& maneuver_pos,bool do_we_need_maneuver) {
@@ -324,6 +324,7 @@ void write_result(const vector2d& drop_pos,const vector2d& maneuver_pos,bool do_
 
     if (do_we_need_maneuver) {
         write_vector(maneuver_pos,output);
+        output << " ";
     }
     write_vector(drop_pos,output);
 
